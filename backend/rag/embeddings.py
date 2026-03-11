@@ -5,7 +5,6 @@ from functools import lru_cache
 from typing import List
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from .config import settings
 
@@ -15,7 +14,10 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 
 @lru_cache(maxsize=1)
-def _get_model() -> SentenceTransformer:
+def _get_model():
+    # Import lazily so app startup can bind port quickly on small instances.
+    from sentence_transformers import SentenceTransformer
+
     model = SentenceTransformer(settings.embedding_model_name)
     return model
 
