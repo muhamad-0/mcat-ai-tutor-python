@@ -4,7 +4,11 @@ __pycache__/
 .venv/
 
 # Local data
-backend/data/
+backend/data/*
+!backend/data/index/
+!backend/data/index/documents.jsonl
+!backend/data/index/embeddings.npy
+!backend/data/index/meta.json
 backend/.env
 
 # OS
