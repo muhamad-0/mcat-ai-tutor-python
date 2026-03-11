@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block page_header %}
+  <p class="eyebrow">Admin Mode</p>
+  <h1 class="page-title">RAG Index Manager</h1>
+{% endblock %}
+{% block content %}
+  <section class="card">
+    <h2 class="section-title">Upload PDF Files</h2>
+    <p class="section-subtitle">
+      Upload MCAT fluid dynamics PDFs. The backend runs OCR, chunking, embeddings, and stores vectors in <code>backend/data/index/</code>.
+    </p>
+
+    <div class="field">
+      <label for="pdfFiles">PDF files</label>
+      <input id="pdfFiles" type="file" accept="application/pdf" multiple />
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="uploadBtn">Index action</label>
+        <span class="muted">First run may download the embedding model and take longer.</span>
+      </div>
+      <button class="btn btn-primary" id="uploadBtn">Upload and Index</button>
+      <span id="uploadStatus" class="status muted">Ready.</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Current Vector Data</h2>
+    <div class="stats-grid">
+      <article class="stat">
+        <p class="stat-label">Embedding model</p>
+        <p class="stat-value"><code>{{ embedding_model }}</code></p>
+      </article>
+      <article class="stat">
+        <p class="stat-label">Embedding dim</p>
+        <p class="stat-value">{{ dim }}</p>
+      </article>
+      <article class="stat">
+        <p class="stat-label">Total chunks</p>
+        <p class="stat-value">{{ chunk_count }}</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="card response-wrap">
+    <h2 class="section-title">Indexed PDFs</h2>
+    {% if pdfs and pdfs|length > 0 %}
+      <ul>
+        {% for p in pdfs %}
+          <li>
+            <strong>{{ p.name }}</strong>
+            <span class="badge">pages={{ p.page_count }}</span>
+            <span class="badge">chunks={{ p.chunk_count }}</span>
+            <span class="muted">added {{ p.added_at }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">No PDFs indexed yet. Upload PDFs above.</p>
+    {% endif %}
+  </section>
+
+  <section class="card response-wrap">
+    <h2 class="section-title">Sample Chunks</h2>
+    {% if sample_chunks and sample_chunks|length > 0 %}
+      <div class="code">
+      {% for c in sample_chunks %}
+[{{ c.chunk_id }}] {{ c.source_pdf }} (p{{ c.page_number }})
+{{ c.preview }}
+
+      {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">No chunks to show yet.</p>
+    {% endif %}
+  </section>
+
+<script>
+  const uploadBtn = document.getElementById('uploadBtn');
+  const pdfFiles = document.getElementById('pdfFiles');
+  const uploadStatus = document.getElementById('uploadStatus');
+
+  function setUploadStatus(message, isError = false) {
+    uploadStatus.textContent = message;
+    uploadStatus.classList.remove('error', 'success', 'muted');
+    uploadStatus.classList.add(isError ? 'error' : 'success');
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    setUploadStatus('');
+    const files = pdfFiles.files;
+    if (!files || files.length === 0) {
+      setUploadStatus('Please select at least one PDF.', true);
+      return;
+    }
+
+    const fd = new FormData();
+    for (const f of files) fd.append('files', f);
+
+    uploadBtn.disabled = true;
+    setUploadStatus('Uploading and indexing... this can take a while.');
+
+    try {
+      const resp = await fetch('/admin/rag', { method: 'POST', body: fd });
+      const text = await resp.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setUploadStatus('Server error (non-JSON): ' + text.slice(0, 200), true);
+        return;
+      }
+
+      if (!data.ok) {
+        setUploadStatus(data.error || 'Upload failed.', true);
+      } else {
+        setUploadStatus('Done. Refreshing page...');
+        window.location.reload();
+      }
+    } catch (e) {
+      setUploadStatus('Error: ' + e, true);
+    } finally {
+      uploadBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

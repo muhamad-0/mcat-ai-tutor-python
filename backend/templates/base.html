@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title if title else "MCAT AI Tutor" }}</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260310-2" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/user/explanation">
+        <span class="brand-mark">MA</span>
+        <span>
+          <span class="brand-title">MCAT AI Tutor</span>
+          <span class="brand-subtitle">Fluids RAG Workspace</span>
+        </span>
+      </a>
+
+      <section class="sidebar-section">
+        <p class="sidebar-label">Navigation</p>
+        <nav class="sidebar-nav">
+          <a class="nav-link" data-path="/user/explanation" href="/user/explanation">Explanation</a>
+          <a class="nav-link" data-path="/user/mcq" href="/user/mcq">MCQ Builder</a>
+          <a class="nav-link" data-path="/admin/rag" href="/admin/rag">Admin / Index</a>
+        </nav>
+      </section>
+
+      <section class="sidebar-tip">
+        <p>
+          Tip: keep <code>top-k</code> between 4 and 8 for focused explanations and cleaner analogies.
+        </p>
+      </section>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <div>
+          {% block page_header %}
+            <p class="eyebrow">Study Workspace</p>
+            <h1 class="page-title">MCAT Fluids Tutor</h1>
+          {% endblock %}
+        </div>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="footer">
+        <small>
+          Upload PDFs in <code>/admin/rag</code>, then query <code>/user/explanation</code> or <code>/user/mcq</code>.
+        </small>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [["$", "$"], ["\\(", "\\)"]],
+        displayMath: [["$$", "$$"], ["\\[", "\\]"]]
+      },
+      options: {
+        skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"]
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script defer src="/static/app.js?v=20260310-2"></script>
+</body>
+</html>

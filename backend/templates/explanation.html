@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block page_header %}
+  <p class="eyebrow">Student Mode</p>
+  <h1 class="page-title">Explanation Builder</h1>
+{% endblock %}
+{% block content %}
+  <section class="card">
+    <h2 class="section-title">Ask Any Fluids Concept</h2>
+    <p class="section-subtitle">
+      Get a tutor-style explanation with step-by-step reasoning, equations in LaTeX, and one practical analogy.
+    </p>
+
+    {% if not has_index %}
+      <p class="error">Vector store is empty. Go to <a href="/admin/rag">/admin/rag</a> and upload PDFs first.</p>
+    {% endif %}
+
+    <div class="field">
+      <label for="question">Your question</label>
+      <textarea id="question" placeholder="Explain Bernoulli's principle in simple words and include an analogy."></textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="topk">Top-K chunks</label>
+        <input id="topk" type="number" min="1" max="12" value="{{ top_k }}" />
+      </div>
+      <button class="btn btn-primary" id="askBtn">Generate explanation</button>
+      <span id="status" class="status muted">Ready.</span>
+    </div>
+  </section>
+
+  <section class="card response-wrap">
+    <div class="response-head">
+      <h2 class="section-title">Answer</h2>
+      <span class="tag">LaTeX Rendered</span>
+    </div>
+    <div id="answer" class="response-body muted"></div>
+  </section>
+
+  <section class="card response-wrap">
+    <h2 class="section-title">Retrieved Sources</h2>
+    <div id="sources" class="sources-list"></div>
+  </section>
+
+<script>
+  const askBtn = document.getElementById('askBtn');
+  const statusEl = document.getElementById('status');
+  const answerEl = document.getElementById('answer');
+  const sourcesEl = document.getElementById('sources');
+  const questionEl = document.getElementById('question');
+  const topKEl = document.getElementById('topk');
+
+  function setStatus(message, isError = false) {
+    statusEl.textContent = message;
+    statusEl.classList.remove('error', 'success', 'muted');
+    statusEl.classList.add(isError ? 'error' : 'success');
+  }
+
+  askBtn.addEventListener('click', async () => {
+    setStatus('');
+    answerEl.innerHTML = '';
+    answerEl.classList.add('muted');
+    sourcesEl.innerHTML = '';
+
+    const question = questionEl.value.trim();
+    const top_k = parseInt(topKEl.value || '6', 10);
+
+    if (!question) {
+      setStatus('Please enter a question.', true);
+      return;
+    }
+
+    askBtn.disabled = true;
+    setStatus('Thinking...');
+
+    try {
+      const resp = await fetch('/user/explanation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, top_k })
+      });
+      const text = await resp.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setStatus('Server error (non-JSON): ' + text.slice(0, 200), true);
+        return;
+      }
+
+      if (!data.ok) {
+        setStatus(data.error || 'Request failed.', true);
+        return;
+      }
+
+      answerEl.classList.remove('muted');
+      window.renderTutorResponse(answerEl, data.answer || '');
+      window.renderSources(sourcesEl, data.sources || []);
+      setStatus('Done.');
+    } catch (e) {
+      setStatus('Error: ' + e, true);
+    } finally {
+      askBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

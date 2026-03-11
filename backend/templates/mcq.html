@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block page_header %}
+  <p class="eyebrow">Student Mode</p>
+  <h1 class="page-title">MCQ Builder</h1>
+{% endblock %}
+{% block content %}
+  <section class="card">
+    <h2 class="section-title">Generate Practice Questions</h2>
+    <p class="section-subtitle">
+      Create one MCAT-style question with answer and explanation, grounded in retrieved chunks.
+    </p>
+
+    {% if not has_index %}
+      <p class="error">Vector store is empty. Go to <a href="/admin/rag">/admin/rag</a> and upload PDFs first.</p>
+    {% endif %}
+
+    <div class="field">
+      <label for="topic">Topic</label>
+      <input id="topic" type="text" placeholder="buoyancy and pressure" />
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="topk">Top-K chunks</label>
+        <input id="topk" type="number" min="1" max="12" value="{{ top_k }}" />
+      </div>
+      <button class="btn btn-primary" id="genBtn">Generate MCQ</button>
+      <span id="status" class="status muted">Ready.</span>
+    </div>
+  </section>
+
+  <section class="card response-wrap">
+    <div class="response-head">
+      <h2 class="section-title">Output</h2>
+      <span class="tag">LaTeX Rendered</span>
+    </div>
+    <div id="output" class="response-body muted"></div>
+  </section>
+
+  <section class="card response-wrap">
+    <h2 class="section-title">Retrieved Sources</h2>
+    <div id="sources" class="sources-list"></div>
+  </section>
+
+<script>
+  const genBtn = document.getElementById('genBtn');
+  const statusEl = document.getElementById('status');
+  const outputEl = document.getElementById('output');
+  const sourcesEl = document.getElementById('sources');
+  const topicEl = document.getElementById('topic');
+  const topKEl = document.getElementById('topk');
+
+  function setStatus(message, isError = false) {
+    statusEl.textContent = message;
+    statusEl.classList.remove('error', 'success', 'muted');
+    statusEl.classList.add(isError ? 'error' : 'success');
+  }
+
+  genBtn.addEventListener('click', async () => {
+    setStatus('');
+    outputEl.innerHTML = '';
+    outputEl.classList.add('muted');
+    sourcesEl.innerHTML = '';
+
+    const topic = topicEl.value.trim();
+    const top_k = parseInt(topKEl.value || '6', 10);
+
+    if (!topic) {
+      setStatus('Please enter a topic.', true);
+      return;
+    }
+
+    genBtn.disabled = true;
+    setStatus('Generating...');
+
+    try {
+      const resp = await fetch('/user/mcq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, top_k })
+      });
+      const text = await resp.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setStatus('Server error (non-JSON): ' + text.slice(0, 200), true);
+        return;
+      }
+
+      if (!data.ok) {
+        setStatus(data.error || 'Request failed.', true);
+        return;
+      }
+
+      outputEl.classList.remove('muted');
+      window.renderTutorResponse(outputEl, data.output || '');
+      window.renderSources(sourcesEl, data.sources || []);
+      setStatus('Done.');
+    } catch (e) {
+      setStatus('Error: ' + e, true);
+    } finally {
+      genBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}
